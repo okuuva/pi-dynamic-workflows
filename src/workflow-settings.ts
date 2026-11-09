@@ -8,6 +8,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { MAX_AGENT_RETRIES, MAX_CONCURRENCY, normalizeKeywordTriggerWord, WORKFLOW_SETTINGS_FILE } from "./config.js";
+import type { EffortLevel } from "./effort-command.js";
 import { workflowHomeDir, workflowProjectPaths } from "./workflow-paths.js";
 
 export interface WorkflowSettings {
@@ -18,7 +19,7 @@ export interface WorkflowSettings {
    * Initial in-memory orchestration effort for a fresh Pi session. Omitted
    * (the default) is "off"; slash commands never write this preference.
    */
-  defaultEffort?: "off" | "high" | "ultra";
+  defaultEffort?: EffortLevel;
   defaultAgentTimeoutMs?: number | null;
   /**
    * Default hard token budget applied to runs that don't pass their own
@@ -183,7 +184,12 @@ function normalizeSettings(value: unknown): WorkflowSettings {
   }
   const keywordTriggerWord = normalizeKeywordTriggerWord(raw.keywordTriggerWord);
   if (keywordTriggerWord !== undefined) settings.keywordTriggerWord = keywordTriggerWord;
-  if (raw.defaultEffort === "off" || raw.defaultEffort === "high" || raw.defaultEffort === "ultra") {
+  if (
+    raw.defaultEffort === "off" ||
+    raw.defaultEffort === "auto" ||
+    raw.defaultEffort === "high" ||
+    raw.defaultEffort === "ultra"
+  ) {
     settings.defaultEffort = raw.defaultEffort;
   }
   if (raw.defaultAgentTimeoutMs === null) {

@@ -15,7 +15,7 @@
 
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 
-export type EffortLevel = "off" | "high" | "ultra";
+export type EffortLevel = "off" | "auto" | "high" | "ultra";
 
 export interface EffortState {
   level: EffortLevel;
@@ -25,6 +25,8 @@ export function createEffortState(): EffortState {
   return { level: "off" };
 }
 
+const AUTO_DIRECTIVE =
+  "Effort: AUTO. Use the smallest useful workflow for the task; set maxAgents to match the planned fan-out.";
 const HIGH_DIRECTIVE =
   "Effort: HIGH. Be thorough — use a few parallel reviewers/perspectives and an adversarial verify pass (see verify()/judgePanel()); set maxAgents to match the planned fan-out.";
 const ULTRA_DIRECTIVE =
@@ -32,6 +34,7 @@ const ULTRA_DIRECTIVE =
 
 /** The extra directive appended to the forced-workflow prompt for an effort level. */
 export function effortDirective(level: EffortLevel): string | undefined {
+  if (level === "auto") return AUTO_DIRECTIVE;
   if (level === "high") return HIGH_DIRECTIVE;
   if (level === "ultra") return ULTRA_DIRECTIVE;
   return undefined;
@@ -49,20 +52,22 @@ export function isSubstantive(text: string): boolean {
 
 export function registerEffortCommand(pi: ExtensionAPI, state: EffortState): void {
   pi.registerCommand("effort", {
-    description: "Standing workflow effort: off | high | ultra — auto-arms a workflow for substantive messages",
+    description: "Standing workflow effort: off | auto | high | ultra. Auto chooses task-appropriate orchestration.",
     async handler(args: string, _ctx: ExtensionCommandContext) {
       const arg = args.trim().toLowerCase();
       const say = (content: string) => pi.sendMessage({ customType: "effort", content, display: true });
-      if (arg === "off" || arg === "high" || arg === "ultra") {
+      if (arg === "off" || arg === "auto" || arg === "high" || arg === "ultra") {
         state.level = arg;
         await say(
           arg === "off"
             ? "Effort off — messages are no longer auto-armed as workflows."
-            : `Effort ${arg} — substantive messages now auto-arm a workflow (${arg === "ultra" ? "exhaustive" : "thorough"} fan-out). Use /effort off to stop.`,
+            : arg === "auto"
+              ? "Effort auto. Use workflows when parallel work or an independent check helps; otherwise work directly. Use /effort off to stop."
+              : `Effort ${arg} — substantive messages now auto-arm a workflow (${arg === "ultra" ? "exhaustive" : "thorough"} fan-out). Use /effort off to stop.`,
         );
         return;
       }
-      await say(`Effort is currently "${state.level}". Usage: /effort off | high | ultra`);
+      await say(`Effort is currently "${state.level}". Usage: /effort off | auto | high | ultra`);
     },
   });
 

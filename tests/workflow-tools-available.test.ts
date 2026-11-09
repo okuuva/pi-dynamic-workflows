@@ -699,7 +699,7 @@ return await agent("verify", {label: "check"});`;
     try {
       await withFakeHomeAsync(fakeHome, async () => {
         discardWorkflowRuntime(process.cwd());
-        saveWorkflowSettings({ defaultEffort: "high" });
+        saveWorkflowSettings({ defaultEffort: "auto" });
         const registeredTools: string[] = [];
         const activeTools = ["bash", "read"];
         const handlers: Record<string, Array<(...args: any[]) => any>> = {};
@@ -740,8 +740,8 @@ return await agent("verify", {label: "check"});`;
         handlers.session_shutdown?.[0]?.({ reason: "reload" });
         const staged = takeWorkflowRuntime(process.cwd());
         assert.ok(staged, "session_shutdown(reload) stages the live manager for the next extension generation");
-        assert.equal(staged.effort.level, "high", "a fresh session applies the configured default effort");
-        staged.effort.level = "ultra";
+        assert.equal(staged.effort.level, "auto", "a fresh session applies the configured default effort");
+        saveWorkflowSettings({ defaultEffort: "off" });
         handoffWorkflowRuntime(staged);
 
         const secondHandlers: Record<string, Array<(...args: any[]) => any>> = {};
@@ -776,7 +776,7 @@ return await agent("verify", {label: "check"});`;
         secondHandlers.session_shutdown?.[0]?.({ reason: "reload" });
         const restaged = takeWorkflowRuntime(process.cwd());
         assert.equal(restaged?.manager, staged.manager, "a compatible generation keeps the exact live manager");
-        assert.equal(restaged?.effort.level, "ultra", "session effort survives with the compatible runtime");
+        assert.equal(restaged?.effort.level, "auto", "session effort survives reload without reapplying defaults");
         discardWorkflowRuntime(process.cwd());
       });
     } finally {

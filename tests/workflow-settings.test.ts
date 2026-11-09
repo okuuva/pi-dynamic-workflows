@@ -68,8 +68,10 @@ describe("workflow settings", () => {
     withSettingsPath((settingsPath) => {
       mkdirSync(dirname(settingsPath), { recursive: true });
 
-      saveWorkflowSettings({ defaultEffort: "high" }, settingsPath);
-      assert.deepEqual(loadWorkflowSettings(settingsPath), { defaultEffort: "high" });
+      for (const defaultEffort of ["off", "auto", "high", "ultra"] as const) {
+        saveWorkflowSettings({ defaultEffort }, settingsPath);
+        assert.deepEqual(loadWorkflowSettings(settingsPath), { defaultEffort });
+      }
 
       for (const defaultEffort of ["HIGH", "medium", "", true, null]) {
         writeFileSync(settingsPath, JSON.stringify({ defaultEffort }), "utf-8");
@@ -226,8 +228,10 @@ describe("workflow settings", () => {
       saveWorkflowSettings({ defaultEffort: "high" }, settingsPath);
 
       assert.deepEqual(loadWorkflowSettings(options), { defaultEffort: "high" });
-      writeFileSync(projectLocalSettingsPath, JSON.stringify({ defaultEffort: "ultra" }));
-      assert.deepEqual(loadWorkflowSettings(options), { defaultEffort: "ultra" });
+      for (const defaultEffort of ["auto", "ultra"]) {
+        writeFileSync(projectLocalSettingsPath, JSON.stringify({ defaultEffort }));
+        assert.deepEqual(loadWorkflowSettings(options), { defaultEffort });
+      }
       assert.deepEqual(loadWorkflowSettings(settingsPath), { defaultEffort: "high" });
 
       for (const value of [{ defaultEffort: "HIGH" }, [], null]) {
@@ -236,6 +240,8 @@ describe("workflow settings", () => {
       }
 
       writeFileSync(projectLocalSettingsPath, JSON.stringify({ defaultEffort: "ultra" }));
+      saveWorkflowSettings({ defaultEffort: "auto" }, { ...options, scope: "project" });
+      assert.deepEqual(loadWorkflowSettings(options), { defaultEffort: "auto" });
       saveWorkflowSettings({ defaultEffort: "off" }, { ...options, scope: "project" });
       assert.deepEqual(loadWorkflowSettings(options), { defaultEffort: "off" });
       assert.deepEqual(JSON.parse(readFileSync(projectLocalSettingsPath, "utf-8")), { defaultEffort: "ultra" });

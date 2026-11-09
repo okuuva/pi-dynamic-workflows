@@ -126,7 +126,7 @@ export interface WorkflowCommandOptions {
   getCwd?: () => string;
   /** Live manager accessor; preferred over a closed-over manager. */
   getManager?: () => WorkflowManager;
-  /** Standing effort mode; when high/ultra, `/workflows run` carries its directive too. */
+  /** Standing effort mode; `/workflows run` carries its sizing directive too. */
   effort?: EffortState;
 }
 

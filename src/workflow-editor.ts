@@ -59,9 +59,10 @@ export interface InstallWorkflowKeywordArmingOptions {
  * Why a turn was armed. This is stated truthfully in the banner so the model
  * isn't told "the trigger word you typed" on a path where no word was typed:
  *  - "keyword": the user typed the configured workflow trigger word.
- *  - "effort": standing `/effort` armed this turn (no workflow word was typed).
+ *  - "effort": standing high/ultra effort armed this turn (no workflow word was typed).
+ *  - "auto": standing auto effort armed this turn with task-appropriate orchestration.
  */
-export type ArmReason = "keyword" | "effort";
+export type ArmReason = "keyword" | "effort" | "auto";
 
 /**
  * Appended to the effort-path directive: standing `/effort` arms on every
@@ -130,11 +131,20 @@ export function buildArmedWorkflowDirective(opts: { reason?: ArmReason; extraDir
   const reason = opts.reason ?? "keyword";
   const lines = [
     "---",
-    "[workflows mode armed. Decide first: if this message is a question, a trivial task, or",
-    "just talk (about workflows, this repo, or the tool itself), answer it directly and stay",
-    "conversational — arming authorizes the tool, it does not force it. If it is a real,",
-    "decomposable request to do work, handle it by calling the `workflow` tool: write a script",
-    "that fans the task out across subagents via agent()/parallel()/pipeline().",
+    ...(reason === "auto"
+      ? [
+          "[workflows mode armed. Decide first: if independent tasks can run in parallel or an",
+          "independent check materially improves reliability, handle it by calling the `workflow` tool:",
+          "write a script that fans the task out across subagents via agent()/parallel()/pipeline().",
+          "Otherwise, work directly. Arming authorizes the tool, it does not force it.",
+        ]
+      : [
+          "[workflows mode armed. Decide first: if this message is a question, a trivial task, or",
+          "just talk (about workflows, this repo, or the tool itself), answer it directly and stay",
+          "conversational — arming authorizes the tool, it does not force it. If it is a real,",
+          "decomposable request to do work, handle it by calling the `workflow` tool: write a script",
+          "that fans the task out across subagents via agent()/parallel()/pipeline().",
+        ]),
     `Why this turn is armed: ${armReasonClause(reason)}.`,
     `${BACKGROUND_DELIVERY_REASSURANCE}]`,
   ];
@@ -387,7 +397,7 @@ export function installWorkflowKeywordArming(
       byEffort && effort
         ? [effortDirective(effort.level), EFFORT_CONVERSATIONAL_ESCAPE].filter(Boolean).join(" ")
         : undefined;
-    const reason: ArmReason = byEffort ? "effort" : "keyword";
+    const reason: ArmReason = byEffort ? (effort?.level === "auto" ? "auto" : "effort") : "keyword";
     if (byEffort) {
       // Preserve standing /effort's existing input transform semantics. Its
       // directive remains part of this user turn rather than the transient

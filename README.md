@@ -142,7 +142,12 @@ The installed extension generates this compact index from its executable capabil
 /code-review 42
 ```
 
-For an always-on exhaustive mode, use `/ultracode`; `/effort high` is the lighter standing option.
+Use `/effort auto` for balanced automatic orchestration on substantive interactive messages.
+Pi uses workflows when independent tasks can run in parallel or an independent check materially improves reliability, and otherwise works directly.
+It requests the smallest useful workflow for the task, with `maxAgents` matching the planned fan-out.
+Task-specific workflow JavaScript, including parallel agents and pipelines, remains available.
+This controls orchestration, not model reasoning or thinking levels.
+Use `/effort high` for thorough orchestration, `/ultracode` or `/effort ultra` for exhaustive orchestration, and `/effort off` to stop automatic arming.
 
 These same 5 patterns are also reachable by name without a slash command — Pi can recognize a decomposable request and run the matching curated pattern directly:
 
@@ -170,7 +175,7 @@ Pi can manage background runs directly with the `workflow_control` tool instead 
 | `/workflows-progress compact\|detailed\|status\|max <N>` | Live-panel detail level (and max agents shown per phase in detailed mode) |
 | `/workflows-models` | Map model tiers and thinking levels |
 | `/ultracode [off]` | Toggle exhaustive automatic workflows |
-| `/effort off\|high\|ultra` | Set the standing orchestration effort |
+| `/effort off\|auto\|high\|ultra` | Set the standing orchestration effort |
 
 In the navigator: `↑/↓` select · `PgUp/PgDn` page · `Home/End` jump · `/` filter runs by name, ID, or status and saved workflows by name or description · `enter/→` open · `esc/←` back. Filter text updates the visible list immediately; `enter` commits the draft filter. In filter-edit mode, `esc` cancels the draft and keeps the committed query; in browse mode, `esc` first clears an existing filter without closing the navigator, and only a second `esc` with no filter backs/closes normally. On a run, `p` pauses (press `p` again to confirm), `x` stops (press `x` again to confirm), `r` restarts, and `s` saves; these lifecycle controls remain bound to the run while viewing its phases, agents, or detail. On a saved workflow (including its detail view), `r` renames and `x` deletes (press `x` again to confirm). Rename `enter` commits and `esc` cancels; names cannot contain whitespace, controls, or path separators. `q` quits.
 
@@ -275,7 +280,7 @@ again when an extension registers a tool during `session_start` or `before_agent
 `structured_output` remain the documented schema/system exemptions. This is an in-process tool-policy gate, not an
 operating-system sandbox; only opt in trusted, child-safe extensions.
 
-Set `"defaultEffort": "high"` or `"ultra"` in that settings file to opt a fresh session into the corresponding orchestration effort (`"off"` is the default). Project settings overlay the global value. This is an initial in-memory value only: `/effort` and `/ultracode` change the current session without writing settings, and reload/new/fork/session switches retain their existing in-process effort.
+Set `"defaultEffort": "auto"`, `"high"`, or `"ultra"` in that settings file to opt a fresh session into the corresponding orchestration effort (`"off"` is the default). Project settings overlay the global value. This is an initial in-memory value only: `/effort` and `/ultracode` change the current session without writing settings, and reload/new/fork/session switches retain their existing in-process effort.
 
 A schema-less agent call that comes back as whitespace-only text is a recoverable `AGENT_EMPTY_OUTPUT` failure and retries like any other. Some models occasionally hit this on an otherwise-fine first attempt; if a fleet is built on one of them, set `agentRetries: 1-2` rather than treating an isolated empty output as a failed run. Because an exhausted recoverable failure resolves to `null` rather than throwing, a run whose **every** agent came back empty still reports `completed`; when that happens the runtime logs a prominent `⚠ Workflow produced no usable results` warning (naming the empty agents and pointing at `agentRetries` and output-token limits) so an all-null fleet can't be mistaken for success.
 

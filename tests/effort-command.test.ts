@@ -4,10 +4,14 @@ import { createEffortState, effortDirective, isSubstantive, registerEffortComman
 import { buildArmedWorkflowPrompt } from "../src/workflow-editor.js";
 
 test("effortDirective shapes fan-out without inventing token budgets", () => {
+  const auto = effortDirective("auto") ?? "";
   const high = effortDirective("high") ?? "";
   const ultra = effortDirective("ultra") ?? "";
 
   assert.equal(effortDirective("off"), undefined);
+  assert.match(auto, /smallest useful workflow/);
+  assert.match(auto, /set maxAgents to match the planned fan-out/);
+  assert.doesNotMatch(auto, /reviewers|adversarial|verify|tokenBudget|big tier|thinking|exhaustive|thorough/);
   assert.match(high, /HIGH/);
   assert.match(ultra, /ULTRA/);
   assert.match(high, /maxAgents/);
@@ -35,13 +39,13 @@ test("buildArmedWorkflowPrompt appends the extra directive only when provided", 
   assert.ok(ultra.startsWith("do X"));
 });
 
-type CmdDef = { handler: (a: string, c: unknown) => Promise<void> };
+type CmdDef = { description: string; handler: (a: string, c: unknown) => Promise<void> };
 
-function registerAndCapture(state: ReturnType<typeof createEffortState>) {
+function registerAndCapture(state: ReturnType<typeof createEffortState>, messages: string[] = []) {
   const cmds = new Map<string, CmdDef>();
   const pi = {
     registerCommand: (name: string, d: unknown) => cmds.set(name, d as CmdDef),
-    sendMessage: () => {},
+    sendMessage: (message: { content: string }) => messages.push(message.content),
   };
   registerEffortCommand(pi as never, state);
   return cmds;
@@ -57,10 +61,25 @@ test("registerEffortCommand: /effort toggles the shared state", async () => {
   assert.equal(state.level, "ultra");
   await effort?.handler("high", {});
   assert.equal(state.level, "high");
+  await effort?.handler(" AUTO ", {});
+  assert.equal(state.level, "auto");
   await effort?.handler("off", {});
   assert.equal(state.level, "off");
   await effort?.handler("bogus", {});
   assert.equal(state.level, "off", "unknown arg leaves the level unchanged");
+});
+
+test("/effort auto reports balanced guidance and appears in help and status", async () => {
+  const state = createEffortState();
+  const messages: string[] = [];
+  const effort = registerAndCapture(state, messages).get("effort");
+  assert.ok(effort);
+  assert.match(effort.description, /off \| auto \| high \| ultra/);
+  await effort.handler("auto", {});
+  assert.match(messages[0], /otherwise work directly/);
+  assert.doesNotMatch(messages[0], /thorough|exhaustive/);
+  await effort.handler("", {});
+  assert.match(messages[1], /currently "auto".*off \| auto \| high \| ultra/);
 });
 
 test("registerEffortCommand: /ultracode turns ultra on, /ultracode off turns it off", async () => {

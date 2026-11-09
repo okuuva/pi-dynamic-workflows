@@ -174,10 +174,14 @@ test("/workflows run adds the workflow tool when absent and does not depend on t
 
 test("/workflows run carries standing effort directives", async () => {
   const effort = createEffortState();
-  effort.level = "ultra";
-  const h = harness({}, { effort });
-  await h.run("run do X");
-  assert.equal(h.sent[0].content, buildForcedWorkflowPrompt("do X", effortDirective("ultra")));
+  for (const level of ["auto", "high", "ultra"] as const) {
+    effort.level = level;
+    const h = harness({}, { effort });
+    await h.run("run do X");
+    assert.equal(h.sent[0].content, buildForcedWorkflowPrompt("do X", effortDirective(level)));
+    assert.match(h.sent[0].content ?? "", /Call the `workflow` tool now/);
+    assert.doesNotMatch(h.sent[0].content ?? "", /otherwise work directly|skip the workflow/i);
+  }
 });
 
 test("/workflows stop <id> calls manager.stop", async () => {

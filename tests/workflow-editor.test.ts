@@ -875,6 +875,61 @@ describe("installWorkflowKeywordArming", () => {
     assert.ok(tools.includes(mod.WORKFLOW_TOOL_NAME), "effort mode should still add the workflow tool");
   });
 
+  it("auto effort authorizes task-specific workflows without requiring orchestration", async () => {
+    const mod = await load();
+    const { createEffortState, registerEffortCommand } = await import("../src/effort-command.js");
+    const effort = createEffortState();
+    const handlers = new Map<string, (...args: any[]) => any>();
+    const commands = new Map<string, { handler: (args: string, ctx: unknown) => Promise<void> }>();
+    let tools = ["read", "bash"];
+    const pi = {
+      on: (event: string, handler: (...args: any[]) => any) => handlers.set(event, handler),
+      registerCommand: (name: string, command: { handler: (args: string, ctx: unknown) => Promise<void> }) =>
+        commands.set(name, command),
+      sendMessage: () => {},
+      getActiveTools: () => [...tools],
+      setActiveTools: (next: string[]) => {
+        tools = next;
+      },
+    } as unknown as ExtensionAPI;
+    registerEffortCommand(pi, effort);
+    mod.installWorkflowKeywordArming(pi, effort, testSettingsOptions());
+    const input = handlers.get("input");
+    assert.ok(input);
+    const text = "Check the authentication and billing modules for bugs.";
+    assert.deepEqual(input({ source: "interactive", text }, { hasUI: true }), { action: "continue" });
+    await commands.get("effort")?.handler("auto", {});
+    await commands.get("workflows-trigger")?.handler("off", {});
+    for (const event of [
+      { source: "rpc", text },
+      { source: "extension", text },
+      { source: "interactive", text: "/skill:review authentication" },
+      { source: "interactive", text: "thanks" },
+    ]) {
+      assert.deepEqual(input(event, { hasUI: true }), { action: "continue" });
+    }
+    for (const prompt of [text, "What is the capital of Finland?"]) {
+      const result = input({ source: "interactive", text: prompt }, { hasUI: true });
+      assert.equal(result.action, "transform");
+      assert.ok(result.text.startsWith(prompt));
+      assert.match(result.text, /Decide first: if independent tasks can run in parallel/);
+      assert.match(result.text, /independent check materially improves reliability/);
+      assert.match(result.text, /Otherwise, work directly/);
+      assert.match(result.text, /Arming authorizes the tool, it does not force it/);
+      assert.match(result.text, /write a script.*agent\(\)\/parallel\(\)\/pipeline\(\)/);
+      assert.match(result.text, /smallest useful workflow/);
+      assert.match(result.text, /set maxAgents to match the planned fan-out/);
+      assert.match(result.text, /skip the workflow and just respond directly/);
+      assert.match(result.text, /standing effort mode armed this turn/);
+      assert.doesNotMatch(result.text, /decomposable request to do work, handle it by calling/);
+      assert.deepEqual(tools, ["read", "bash", mod.WORKFLOW_TOOL_NAME]);
+      handlers.get("turn_end")?.({});
+      assert.deepEqual(tools, ["read", "bash"]);
+    }
+    await commands.get("effort")?.handler("off", {});
+    assert.deepEqual(input({ source: "interactive", text }, { hasUI: true }), { action: "continue" });
+  });
+
   it("restores original tools on turn_end after a triggered turn", async () => {
     const mod = await load();
     const captured: Array<{ event: string; handler: (...args: unknown[]) => unknown }> = [];
